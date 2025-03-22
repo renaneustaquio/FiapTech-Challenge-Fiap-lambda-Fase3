@@ -6,20 +6,34 @@ on:
       - master
 
 jobs:
-  zip-upload:
+  release:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout do código
+      - name: Checkout código
         uses: actions/checkout@v3
 
-      - name: Zipar conteúdo da pasta src
+      - name: Criar arquivo ZIP da Lambda
         run: |
-          cd src
-          zip -r ../lambda_function.zip .
+          zip lambda_function.zip lambda_function.py
 
-      - name: Criar release
+      - name: Criar/Atualizar tag latest
+        run: |
+          git fetch --tags
+          if git rev-parse latest >/dev/null 2>&1; then
+            git tag -d latest
+            git push origin :refs/tags/latest
+          fi
+          git tag latest
+          git push origin latest
+
+      - name: Criar ou atualizar Release latest
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: latest
+          name: "Release Lambda - Latest"
           files: lambda_function.zip
+          prerelease: false
+          draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
