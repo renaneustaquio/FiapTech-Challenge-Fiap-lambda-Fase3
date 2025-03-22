@@ -1,0 +1,25 @@
+name: Zip e Publica no Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  zip-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Zipar conteúdo da pasta src
+        run: |
+          cd src
+          zip -r ../lambda_function.zip .
+
+      - name: Criar release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: lambda_function.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
