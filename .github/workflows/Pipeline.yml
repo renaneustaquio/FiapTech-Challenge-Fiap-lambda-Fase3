@@ -13,14 +13,14 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v3
 
-      - name: Criar arquivo ZIP da Lambda
+      - name: Criar arquivo ZIP da Lambda (pasta src/)
         run: |
-          zip lambda_function.zip lambda_function.py
+          cd src && zip -r ../lambda_function.zip .
 
       - name: Criar/Atualizar tag latest
         run: |
           git fetch --tags
-          if git rev-parse latest >/dev/null 2>&1; then
+          if git show-ref --tags | grep -q "refs/tags/latest"; then
             git tag -d latest
             git push origin :refs/tags/latest
           fi
