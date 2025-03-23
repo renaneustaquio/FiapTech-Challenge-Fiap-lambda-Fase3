@@ -1,7 +1,8 @@
 import re
 import requests
-import jwt  # Biblioteca para gerar o token JWT
-import boto3  # SDK da AWS para interagir com o Cognito
+import jwt
+import boto3
+import os
 
 def validate_cpf(cpf):
     cpf = re.sub(r'\D', '', cpf)
@@ -12,34 +13,35 @@ def validate_cpf(cpf):
     return True
 
 def check_cpf_in_test_api(cpf):
-    api_url = "https://jsonplaceholder.typicode.com/users"
+    api_url = os.environ["API_URL"]
     try:
         response = requests.get(api_url, timeout=10)
         if response.status_code == 200:
             return {"name": "Teste Usuario", "cpf": cpf}
         return None
     except requests.exceptions.RequestException as e:
-        print(f"Erro ao conectar à API de teste: {e}")
+        print(f"Erro ao conectar à API: {e}")
         return None
 
-def generate_jwt(payload, secret="abacaxi"):
+def generate_jwt(payload, secret="SECRET"):
     token = jwt.encode(payload, secret, algorithm="HS256")
     return token
 
 def create_user_in_cognito(username):
     client = boto3.client('cognito-idp')
+    user_pool_id = os.environ["USER_POOLID"]
     try:
         response = client.admin_create_user(
-            UserPoolId='us-east-1_bjgWk97QO',
-            Username=username,  
+            UserPoolId=user_pool_id,
+            Username=username,
             UserAttributes=[
                 {
                     'Name': 'email',
-                    'Value': f"{username}@exemplo.com"  # Cria um email válido com base no CPF ou identificador
+                    'Value': f"{username}@exemplo.com"
                 },
                 {
                     'Name': 'email_verified',
-                    'Value': 'true'  # Opcional: marca o email como verificado
+                    'Value': 'true'
                 }
             ]
         )
@@ -49,14 +51,12 @@ def create_user_in_cognito(username):
         print(f"Erro ao criar o usuário no Cognito: {e}")
         raise
 
-
-
 def store_token_in_cognito(username, token):
     client = boto3.client('cognito-idp')
+    user_pool_id = os.environ["USER_POOLID"]
     try:
-        # Tenta atualizar os atributos do usuário
         response = client.admin_update_user_attributes(
-            UserPoolId='us-east-1_bjgWk97QO',
+            UserPoolId=user_pool_id,
             Username=username,
             UserAttributes=[
                 {
@@ -68,16 +68,12 @@ def store_token_in_cognito(username, token):
         print("Token armazenado com sucesso no Cognito.")
         return response
     except client.exceptions.UserNotFoundException:
-        # Cria o usuário se ele não existir
         print("Usuário não encontrado. Criando usuário...")
         create_user_in_cognito(username)
-        # Tenta novamente atualizar os atributos
         return store_token_in_cognito(username, token)
     except Exception as e:
         print(f"Erro ao armazenar o token no Cognito: {e}")
         raise
-
-
 
 def lambda_handler(event, context):
     cpf = event.get("queryStringParameters", {}).get("cpf")
@@ -90,7 +86,7 @@ def lambda_handler(event, context):
     client_data = check_cpf_in_test_api(cpf)
     if client_data:
         token = generate_jwt(client_data)
-        store_token_in_cognito(client_data["cpf"], token)  # Armazena o token no Cognito
+        store_token_in_cognito(client_data["cpf"], token)
         return {"statusCode": 200, "body": f"Token JWT: {token}"}
     else:
         return {"statusCode": 404, "body": "CPF não encontrado"}
