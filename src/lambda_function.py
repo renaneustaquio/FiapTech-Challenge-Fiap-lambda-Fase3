@@ -15,7 +15,7 @@ def validate_cpf(cpf):
 def check_cpf_in_test_api(cpf):
     api_url = os.environ["API_URL"]
     try:
-        response = requests.get(api_url, timeout=10)
+        response = requests.get(f"{api_url}?cpf={cpf}", timeout=30)
         if response.status_code == 200:
             return {"name": "Teste Usuario", "cpf": cpf}
         return None
